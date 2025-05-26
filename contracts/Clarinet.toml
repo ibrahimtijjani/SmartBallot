@@ -1,0 +1,28 @@
+[project]
+name = "decentralized-voting"
+dependencies = []
+
+[contracts.voting]
+path = "contracts/voting.clar"
+dependencies = []
+
+[repl.analysis]
+passes = ["check_checker"]
+
+[repl.clarity_repl]
+clarity_version = 2
+
+[repl.devnet]
+num_blocks_to_mine = 10
+
+[accounts.deployer]
+mnemonic = "fetch outside shrug mystery ripple lazy ghost neck picnic viable shed noodle" # Default Clarinet deployer mnemonic
+
+[accounts.wallet_1]
+mnemonic = "equal pencil rescue blade notice exchange comfort eyebrow monster report flash image" # Default Clarinet wallet 1
+
+[accounts.wallet_2]
+mnemonic = "adapt pulp scheme park resemble artist jungle quiz exhaust path finish farm" # Default Clarinet wallet 2
+
+# Add more wallets as needed for testing
+
