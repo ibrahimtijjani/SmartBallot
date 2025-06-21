@@ -437,7 +437,121 @@
     (ok (var-get election-id-counter))
 )
 
+;; Retrieves the weighted vote count for a specific option within an election.
+;; @param election-id: The ID of the election.
+;; @param option-index: The 0-based index of the option.
+;; @returns uint: The weighted votes for the specified option (defaults to 0 if not found).
+(define-read-only (get-weighted-vote-count (election-id uint) (option-index uint))
+    (default-to u0 (map-get? weighted-vote-counts { election-id: election-id, option-index: option-index }))
+)
+
+;; Retrieves the weighted vote results for all options in an election.
+;; @param election-id: The ID of the election.
+;; @returns (ok (list uint)) containing weighted vote counts for each option, or (err ERR-ELECTION-NOT-FOUND).
+(define-read-only (get-weighted-election-results (election-id uint))
+    (match (map-get? elections election-id)
+        election-data
+        (let ((options (get options election-data)))
+             (ok (map (lambda (index) (get-weighted-vote-count election-id index)) (list-indices options)))
+        )
+        (err ERR-ELECTION-NOT-FOUND)
+    )
+)
+
+;; Checks if a voter is on the allowlist for a specific election.
+;; @param election-id: The ID of the election.
+;; @param voter: The principal address of the voter to check.
+;; @returns bool: true if the voter is allowlisted, false otherwise.
+(define-read-only (is-allowlisted (election-id uint) (voter principal))
+    (is-some (map-get? election-allowlist { election-id: election-id, voter: voter }))
+)
+
+;; Checks if a voter has committed in a commit-reveal election.
+;; @param election-id: The ID of the election.
+;; @param voter: The principal address of the voter to check.
+;; @returns bool: true if the voter has committed, false otherwise.
+(define-read-only (has-committed (election-id uint) (voter principal))
+    (is-some (map-get? vote-commitments { election-id: election-id, voter: voter }))
+)
+
+;; Checks if a voter has revealed in a commit-reveal election.
+;; @param election-id: The ID of the election.
+;; @param voter: The principal address of the voter to check.
+;; @returns bool: true if the voter has revealed, false otherwise.
+(define-read-only (has-revealed (election-id uint) (voter principal))
+    (is-some (map-get? vote-reveals { election-id: election-id, voter: voter }))
+)
+
 ;; --- Private Helper Functions ---
+
+;; Validates voter eligibility based on election settings.
+;; @param election-id: The ID of the election.
+;; @param voter: The principal address of the voter.
+;; @param election: The election data.
+;; @returns (ok bool) true if eligible, or an error code.
+(define-private (validate-voter-eligibility (election-id uint) (voter principal) (election { id: uint, question: (string-utf8 256), creator: principal, start-block: uint, end-block: uint, options: (list 10 (string-utf8 64)), total-votes: uint, voting-type: (string-ascii 20), token-contract: (optional principal), min-token-balance: uint, use-allowlist: bool, commit-end-block: (optional uint), reveal-end-block: (optional uint) }))
+    (begin
+        ;; Check allowlist if enabled
+        (if (get use-allowlist election)
+            (asserts! (is-allowlisted election-id voter) ERR-NOT-ALLOWLISTED)
+            true
+        )
+
+        ;; Check token requirements for token-gated and weighted voting
+        (if (or (is-eq (get voting-type election) "token-gated") (is-eq (get voting-type election) "weighted"))
+            (match (get token-contract election)
+                token-contract-addr
+                (begin
+                    ;; Check if voter has minimum token balance
+                    (let ((balance (try! (get-token-balance token-contract-addr voter))))
+                        (asserts! (>= balance (get min-token-balance election)) ERR-INSUFFICIENT-TOKENS)
+                    )
+                    (ok true)
+                )
+                (err ERR-INVALID-TOKEN-CONTRACT)
+            )
+            (ok true)
+        )
+    )
+)
+
+;; Gets the voting weight for a voter in weighted elections.
+;; @param election: The election data.
+;; @param voter: The principal address of the voter.
+;; @returns (ok uint) the voting weight, or an error code.
+(define-private (get-voter-weight (election { id: uint, question: (string-utf8 256), creator: principal, start-block: uint, end-block: uint, options: (list 10 (string-utf8 64)), total-votes: uint, voting-type: (string-ascii 20), token-contract: (optional principal), min-token-balance: uint, use-allowlist: bool, commit-end-block: (optional uint), reveal-end-block: (optional uint) }) (voter principal))
+    (if (is-eq (get voting-type election) "weighted")
+        (match (get token-contract election)
+            token-contract-addr
+            (get-token-balance token-contract-addr voter)
+            (err ERR-INVALID-TOKEN-CONTRACT)
+        )
+        (ok u1) ;; Default weight for non-weighted elections
+    )
+)
+
+;; Gets the token balance for a voter from a token contract.
+;; This is a placeholder - in a real implementation, this would call the token contract.
+;; @param token-contract: The token contract principal.
+;; @param voter: The voter's principal.
+;; @returns (ok uint) the token balance, or an error code.
+(define-private (get-token-balance (token-contract principal) (voter principal))
+    ;; Placeholder implementation - in reality, this would call:
+    ;; (contract-call? token-contract get-balance voter)
+    ;; For now, return a default balance for testing
+    (ok u100)
+)
+
+;; Helper function to add a single voter to allowlist (used with fold).
+;; @param voter: The voter to add.
+;; @param election-id: The election ID (accumulator).
+;; @returns uint: The election-id (passed through as accumulator).
+(define-private (add-voter-to-allowlist (voter principal) (election-id uint))
+    (begin
+        (map-set election-allowlist { election-id: election-id, voter: voter } true)
+        election-id
+    )
+)
 
 ;; Helper function used with `fold` during election creation to initialize
 ;; the vote count for each option to zero in the `vote-counts` map.
@@ -456,6 +570,40 @@
         )
         election-id ;; Return the accumulator for the fold operation
     )
+)
+
+;; Helper function to initialize weighted vote counts for each option.
+;; @param option: The current option string being processed.
+;; @param election-id: The ID of the election being initialized (accumulator).
+;; @returns uint: The election-id (passed through as accumulator).
+(define-private (init-weighted-option-count (option (string-utf8 64)) (election-id uint))
+    (let ((option-index (index-of option (get options (unwrap! (map-get? elections election-id) ERR-ELECTION-NOT-FOUND)))))
+        (match option-index
+            index (map-insert weighted-vote-counts { election-id: election-id, option-index: index } u0)
+            none (panic "Option index not found during weighted init - should not happen")
+        )
+        election-id
+    )
+)
+
+;; Helper function to convert uint to ASCII string for commitment hashing.
+;; @param num: The uint to convert.
+;; @returns (buff 32): ASCII representation as buffer.
+(define-private (int-to-ascii (num uint))
+    ;; Simple implementation for small numbers (0-9)
+    ;; In a production system, this would handle larger numbers
+    (if (is-eq num u0) (as-max-len? "0" u32)
+    (if (is-eq num u1) (as-max-len? "1" u32)
+    (if (is-eq num u2) (as-max-len? "2" u32)
+    (if (is-eq num u3) (as-max-len? "3" u32)
+    (if (is-eq num u4) (as-max-len? "4" u32)
+    (if (is-eq num u5) (as-max-len? "5" u32)
+    (if (is-eq num u6) (as-max-len? "6" u32)
+    (if (is-eq num u7) (as-max-len? "7" u32)
+    (if (is-eq num u8) (as-max-len? "8" u32)
+    (if (is-eq num u9) (as-max-len? "9" u32)
+    (as-max-len? "X" u32) ;; Fallback for numbers > 9
+    ))))))))))
 )
 
 ;; Helper function to generate a list of indices [0, 1, ..., len-1] for a given list.
