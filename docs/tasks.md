@@ -4,23 +4,23 @@ This document contains a prioritized list of improvements for the Decentralized 
 
 ## Smart Contract Enhancements
 
-1. [ ] Implement token-gated voting functionality to restrict voting rights to holders of specific tokens
-2. [ ] Add weighted voting capability based on token holdings
-3. [ ] Implement a commit-reveal voting scheme for enhanced privacy
-4. [ ] Add event emission for contract actions to improve off-chain indexing
-5. [ ] Optimize gas usage in voting functions
-6. [ ] Implement formal verification tests for the voting contract
-7. [ ] Add allowlisting functionality for election creators to specify eligible voters
+1. [X] Implement token-gated voting functionality to restrict voting rights to holders of specific tokens
+2. [X] Add weighted voting capability based on token holdings
+3. [X] Implement a commit-reveal voting scheme for enhanced privacy
+4. [X] Add event emission for contract actions to improve off-chain indexing
+5. [X] Optimize gas usage in voting functions
+6. [X] Implement formal verification tests for the voting contract
+7. [X] Add allowlisting functionality for election creators to specify eligible voters
 
 ## Frontend Improvements
 
 8. [ ] Create an Election Results visualization page with charts/graphs
 9. [ ] Implement real-time updates for election status and results
 10. [ ] Add a user dashboard to manage created elections
-11. [ ] Implement proper form validation and error handling in the Create Election form
+11. [X] Implement proper form validation and error handling in the Create Election form
 12. [ ] Create a "My Votes" page to track user's voting history
-13. [ ] Add responsive design for mobile compatibility
-14. [ ] Implement dark mode support
+13. [X] Add responsive design for mobile compatibility
+14. [X] Implement dark mode support
 
 ## Testing & Quality Assurance
 

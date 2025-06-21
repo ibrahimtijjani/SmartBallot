@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext, createContext } from 'react';
+import React, { useState, useEffect, useCallback, useContext, createContext, useMemo } from 'react';
 import { AppConfig, UserSession, showConnect } from '@stacks/connect';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { NETWORK, APP_NAME, APP_ICON } from '../lib/constants'; // Import constants
