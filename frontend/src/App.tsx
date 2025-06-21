@@ -4,7 +4,7 @@ import Navbar from './components/layout/Navbar';
 import HomePage from './pages/HomePage';
 import CreateElectionPage from './pages/CreateElectionPage';
 import ElectionDetailsPage from './pages/ElectionDetailsPage';
-import UserDashboardPage from './pages/UserDashboardPage';
+import UserDashboardPage from './pages/DashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 const App: React.FC = () => {

@@ -17,10 +17,10 @@ This document contains a prioritized list of improvements for the Decentralized 
 8. [ ] Create an Election Results visualization page with charts/graphs
 9. [ ] Implement real-time updates for election status and results
 10. [ ] Add a user dashboard to manage created elections
-11. [ ] Implement proper form validation and error handling in the Create Election form
+11. [X] Implement proper form validation and error handling in the Create Election form
 12. [ ] Create a "My Votes" page to track user's voting history
-13. [ ] Add responsive design for mobile compatibility
-14. [ ] Implement dark mode support
+13. [X] Add responsive design for mobile compatibility
+14. [X] Implement dark mode support
 
 ## Testing & Quality Assurance
 
