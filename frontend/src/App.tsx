@@ -4,6 +4,7 @@ import Navbar from './components/layout/Navbar';
 import HomePage from './pages/HomePage';
 import CreateElectionPage from './pages/CreateElectionPage';
 import ElectionDetailsPage from './pages/ElectionDetailsPage';
+import UserDashboardPage from './pages/UserDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 const App: React.FC = () => {
@@ -11,10 +12,10 @@ const App: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-dark-900 transition-colors duration-300">
       <Navbar />
       <main className="flex-grow">
-        <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-7xl">
-          <Routes>
+        <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-7xl">          <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/create" element={<CreateElectionPage />} />
+            <Route path="/dashboard" element={<UserDashboardPage />} />
             <Route path="/election/:electionId" element={<ElectionDetailsPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

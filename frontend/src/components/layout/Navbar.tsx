@@ -20,9 +20,7 @@ const Navbar: React.FC = () => {
           >
             <span className="hidden sm:inline">Decentralized Voting</span>
             <span className="sm:hidden">DV Platform</span>
-          </Link>
-
-          {/* Desktop Navigation */}
+          </Link>          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
             <Link 
               to="/" 
@@ -35,6 +33,12 @@ const Navbar: React.FC = () => {
               className="hover:text-blue-200 dark:hover:text-blue-300 transition duration-300 font-medium"
             >
               Create Election
+            </Link>
+            <Link 
+              to="/dashboard" 
+              className="hover:text-blue-200 dark:hover:text-blue-300 transition duration-300 font-medium"
+            >
+              Dashboard
             </Link>
             <div className="flex items-center space-x-3">
               <ThemeToggle />
@@ -83,9 +87,7 @@ const Navbar: React.FC = () => {
               )}
             </button>
           </div>
-        </div>
-
-        {/* Mobile Navigation Menu */}
+        </div>        {/* Mobile Navigation Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-blue-500 dark:border-dark-600">
             <div className="px-2 pt-2 pb-3 space-y-1">
@@ -102,6 +104,13 @@ const Navbar: React.FC = () => {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Create Election
+              </Link>
+              <Link
+                to="/dashboard"
+                className="block px-3 py-2 text-base font-medium hover:text-blue-200 dark:hover:text-blue-300 hover:bg-blue-700 dark:hover:bg-dark-700 rounded-md transition duration-300"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Dashboard
               </Link>
             </div>
           </div>
