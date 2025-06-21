@@ -10,11 +10,16 @@ import {
   listCV,
   principalCV,
   standardPrincipalCV,
+  asciiCV,
+  someCV,
+  noneCV,
+  boolCV,
+  bufferCV,
 } from '@stacks/connect';
 import { StacksTestnet, StacksMainnet } from '@stacks/network';
 import { CONTRACT_ADDRESS, CONTRACT_NAME, NETWORK, APP_NAME, APP_ICON } from '../lib/constants';
 
-// Define the structure for election details based on the contract's map
+// Define the structure for enhanced election details
 interface ElectionData {
   id: number;
   question: string;
@@ -23,6 +28,35 @@ interface ElectionData {
   endBlock: number;
   options: string[];
   totalVotes: number;
+  // Enhanced fields
+  votingType: string;
+  tokenContract?: string;
+  minTokenBalance: number;
+  useAllowlist: boolean;
+  commitEndBlock?: number;
+  revealEndBlock?: number;
+}
+
+// Voting type enum
+export enum VotingType {
+  STANDARD = 'standard',
+  TOKEN_GATED = 'token-gated',
+  WEIGHTED = 'weighted',
+  COMMIT_REVEAL = 'commit-reveal',
+}
+
+// Enhanced election creation parameters
+interface EnhancedElectionParams {
+  question: string;
+  startBlock: number;
+  endBlock: number;
+  options: string[];
+  votingType: VotingType;
+  tokenContract?: string;
+  minTokenBalance?: number;
+  useAllowlist?: boolean;
+  commitEndBlock?: number;
+  revealEndBlock?: number;
 }
 
 /**
@@ -109,8 +143,15 @@ export const useVotingContract = () => {
           creator: value.creator,
           startBlock: Number(value['start-block']),
           endBlock: Number(value['end-block']),
-          options: value.options.map((opt: any) => opt), // Assuming options are strings
+          options: value.options.map((opt: any) => opt),
           totalVotes: Number(value['total-votes']),
+          // Enhanced fields
+          votingType: value['voting-type'] || 'standard',
+          tokenContract: value['token-contract'] || undefined,
+          minTokenBalance: Number(value['min-token-balance'] || 0),
+          useAllowlist: Boolean(value['use-allowlist']),
+          commitEndBlock: value['commit-end-block'] ? Number(value['commit-end-block']) : undefined,
+          revealEndBlock: value['reveal-end-block'] ? Number(value['reveal-end-block']) : undefined,
         };
       }
       return null; // Election not found (contract returned None)
@@ -179,6 +220,114 @@ export const useVotingContract = () => {
     }
   }, [getNetwork, getSenderAddress]);
 
+  /**
+   * Fetches the weighted vote results for a specific election.
+   * @param {number} electionId - The ID of the election.
+   * @returns {Promise<number[] | null>} Weighted vote counts or null on error.
+   */
+  const getWeightedElectionResults = useCallback(async (electionId: number): Promise<number[] | null> => {
+    const options = {
+      contractAddress: CONTRACT_ADDRESS,
+      contractName: CONTRACT_NAME,
+      functionName: 'get-weighted-election-results',
+      functionArgs: [uintCV(electionId)],
+      network: getNetwork(),
+      senderAddress: getSenderAddress(),
+    };
+    try {
+      const result = await callReadOnlyFunction(options);
+      const value = cvToValue(result);
+      if (value.type === 'ok') {
+        return value.value.map((count: any) => Number(count));
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error fetching weighted results for election ${electionId}:`, error);
+      throw new Error(`Failed to fetch weighted results for election ${electionId}.`);
+    }
+  }, [getNetwork, getSenderAddress]);
+
+  /**
+   * Checks if a voter is allowlisted for a specific election.
+   * @param {number} electionId - The ID of the election.
+   * @param {string} [voterAddress] - The voter address (defaults to connected user).
+   * @returns {Promise<boolean>} True if allowlisted, false otherwise.
+   */
+  const isAllowlisted = useCallback(async (electionId: number, voterAddress?: string): Promise<boolean> => {
+    const addressToCheck = voterAddress || getSenderAddress();
+    if (!addressToCheck) return false;
+
+    const options = {
+      contractAddress: CONTRACT_ADDRESS,
+      contractName: CONTRACT_NAME,
+      functionName: 'is-allowlisted',
+      functionArgs: [uintCV(electionId), principalCV(addressToCheck)],
+      network: getNetwork(),
+      senderAddress: getSenderAddress(),
+    };
+    try {
+      const result = await callReadOnlyFunction(options);
+      return cvToValue(result);
+    } catch (error) {
+      console.error(`Error checking allowlist status for ${addressToCheck}:`, error);
+      throw new Error('Failed to check allowlist status.');
+    }
+  }, [getNetwork, getSenderAddress]);
+
+  /**
+   * Checks if a voter has committed in a commit-reveal election.
+   * @param {number} electionId - The ID of the election.
+   * @param {string} [voterAddress] - The voter address (defaults to connected user).
+   * @returns {Promise<boolean>} True if committed, false otherwise.
+   */
+  const hasCommitted = useCallback(async (electionId: number, voterAddress?: string): Promise<boolean> => {
+    const addressToCheck = voterAddress || getSenderAddress();
+    if (!addressToCheck) return false;
+
+    const options = {
+      contractAddress: CONTRACT_ADDRESS,
+      contractName: CONTRACT_NAME,
+      functionName: 'has-committed',
+      functionArgs: [uintCV(electionId), principalCV(addressToCheck)],
+      network: getNetwork(),
+      senderAddress: getSenderAddress(),
+    };
+    try {
+      const result = await callReadOnlyFunction(options);
+      return cvToValue(result);
+    } catch (error) {
+      console.error(`Error checking commit status for ${addressToCheck}:`, error);
+      throw new Error('Failed to check commit status.');
+    }
+  }, [getNetwork, getSenderAddress]);
+
+  /**
+   * Checks if a voter has revealed in a commit-reveal election.
+   * @param {number} electionId - The ID of the election.
+   * @param {string} [voterAddress] - The voter address (defaults to connected user).
+   * @returns {Promise<boolean>} True if revealed, false otherwise.
+   */
+  const hasRevealed = useCallback(async (electionId: number, voterAddress?: string): Promise<boolean> => {
+    const addressToCheck = voterAddress || getSenderAddress();
+    if (!addressToCheck) return false;
+
+    const options = {
+      contractAddress: CONTRACT_ADDRESS,
+      contractName: CONTRACT_NAME,
+      functionName: 'has-revealed',
+      functionArgs: [uintCV(electionId), principalCV(addressToCheck)],
+      network: getNetwork(),
+      senderAddress: getSenderAddress(),
+    };
+    try {
+      const result = await callReadOnlyFunction(options);
+      return cvToValue(result);
+    } catch (error) {
+      console.error(`Error checking reveal status for ${addressToCheck}:`, error);
+      throw new Error('Failed to check reveal status.');
+    }
+  }, [getNetwork, getSenderAddress]);
+
   // --- Public Functions (Contract Calls requiring Wallet Signature) --- //
 
   /**
@@ -225,6 +374,179 @@ export const useVotingContract = () => {
   }, [userSession, getNetwork]); // Depend on getNetwork
 
   /**
+   * Creates an enhanced election with additional features.
+   * @param {EnhancedElectionParams} params - Enhanced election parameters.
+   * @param {object} callbacks - Transaction callbacks.
+   */
+  const createEnhancedElection = useCallback(async (
+    params: EnhancedElectionParams,
+    callbacks: { onFinish?: (data: any) => void; onCancel?: () => void }
+  ) => {
+    if (!userSession || !userSession.isUserSignedIn()) {
+      throw new Error('User must be signed in to create an election.');
+    }
+
+    const functionArgs = [
+      stringUtf8CV(params.question),
+      uintCV(params.startBlock),
+      uintCV(params.endBlock),
+      listCV(params.options.map(opt => stringUtf8CV(opt))),
+      asciiCV(params.votingType),
+      params.tokenContract ? someCV(principalCV(params.tokenContract)) : noneCV(),
+      uintCV(params.minTokenBalance || 0),
+      boolCV(params.useAllowlist || false),
+      params.commitEndBlock ? someCV(uintCV(params.commitEndBlock)) : noneCV(),
+      params.revealEndBlock ? someCV(uintCV(params.revealEndBlock)) : noneCV(),
+    ];
+
+    const txOptions = {
+      contractAddress: CONTRACT_ADDRESS,
+      contractName: CONTRACT_NAME,
+      functionName: 'create-election-enhanced',
+      functionArgs,
+      network: getNetwork(),
+      appDetails: { name: APP_NAME, icon: APP_ICON },
+      onFinish: callbacks.onFinish,
+      onCancel: callbacks.onCancel,
+    };
+
+    await openContractCall(txOptions);
+  }, [userSession, getNetwork]);
+
+  /**
+   * Adds a voter to an election's allowlist.
+   * @param {number} electionId - The election ID.
+   * @param {string} voterAddress - The voter's address.
+   * @param {object} callbacks - Transaction callbacks.
+   */
+  const addToAllowlist = useCallback(async (
+    electionId: number,
+    voterAddress: string,
+    callbacks: { onFinish?: (data: any) => void; onCancel?: () => void }
+  ) => {
+    if (!userSession || !userSession.isUserSignedIn()) {
+      throw new Error('User must be signed in to manage allowlist.');
+    }
+
+    const functionArgs = [uintCV(electionId), principalCV(voterAddress)];
+
+    const txOptions = {
+      contractAddress: CONTRACT_ADDRESS,
+      contractName: CONTRACT_NAME,
+      functionName: 'add-to-allowlist',
+      functionArgs,
+      network: getNetwork(),
+      appDetails: { name: APP_NAME, icon: APP_ICON },
+      onFinish: callbacks.onFinish,
+      onCancel: callbacks.onCancel,
+    };
+
+    await openContractCall(txOptions);
+  }, [userSession, getNetwork]);
+
+  /**
+   * Adds multiple voters to an election's allowlist.
+   * @param {number} electionId - The election ID.
+   * @param {string[]} voterAddresses - Array of voter addresses.
+   * @param {object} callbacks - Transaction callbacks.
+   */
+  const addMultipleToAllowlist = useCallback(async (
+    electionId: number,
+    voterAddresses: string[],
+    callbacks: { onFinish?: (data: any) => void; onCancel?: () => void }
+  ) => {
+    if (!userSession || !userSession.isUserSignedIn()) {
+      throw new Error('User must be signed in to manage allowlist.');
+    }
+
+    const functionArgs = [
+      uintCV(electionId),
+      listCV(voterAddresses.map(addr => principalCV(addr)))
+    ];
+
+    const txOptions = {
+      contractAddress: CONTRACT_ADDRESS,
+      contractName: CONTRACT_NAME,
+      functionName: 'add-multiple-to-allowlist',
+      functionArgs,
+      network: getNetwork(),
+      appDetails: { name: APP_NAME, icon: APP_ICON },
+      onFinish: callbacks.onFinish,
+      onCancel: callbacks.onCancel,
+    };
+
+    await openContractCall(txOptions);
+  }, [userSession, getNetwork]);
+
+  /**
+   * Commits a vote in a commit-reveal election.
+   * @param {number} electionId - The election ID.
+   * @param {Uint8Array} commitment - The commitment hash.
+   * @param {object} callbacks - Transaction callbacks.
+   */
+  const commitVote = useCallback(async (
+    electionId: number,
+    commitment: Uint8Array,
+    callbacks: { onFinish?: (data: any) => void; onCancel?: () => void }
+  ) => {
+    if (!userSession || !userSession.isUserSignedIn()) {
+      throw new Error('User must be signed in to commit vote.');
+    }
+
+    const functionArgs = [uintCV(electionId), bufferCV(commitment)];
+
+    const txOptions = {
+      contractAddress: CONTRACT_ADDRESS,
+      contractName: CONTRACT_NAME,
+      functionName: 'commit-vote',
+      functionArgs,
+      network: getNetwork(),
+      appDetails: { name: APP_NAME, icon: APP_ICON },
+      onFinish: callbacks.onFinish,
+      onCancel: callbacks.onCancel,
+    };
+
+    await openContractCall(txOptions);
+  }, [userSession, getNetwork]);
+
+  /**
+   * Reveals a vote in a commit-reveal election.
+   * @param {number} electionId - The election ID.
+   * @param {number} optionIndex - The chosen option index.
+   * @param {Uint8Array} nonce - The nonce used in commitment.
+   * @param {object} callbacks - Transaction callbacks.
+   */
+  const revealVote = useCallback(async (
+    electionId: number,
+    optionIndex: number,
+    nonce: Uint8Array,
+    callbacks: { onFinish?: (data: any) => void; onCancel?: () => void }
+  ) => {
+    if (!userSession || !userSession.isUserSignedIn()) {
+      throw new Error('User must be signed in to reveal vote.');
+    }
+
+    const functionArgs = [
+      uintCV(electionId),
+      uintCV(optionIndex),
+      bufferCV(nonce)
+    ];
+
+    const txOptions = {
+      contractAddress: CONTRACT_ADDRESS,
+      contractName: CONTRACT_NAME,
+      functionName: 'reveal-vote',
+      functionArgs,
+      network: getNetwork(),
+      appDetails: { name: APP_NAME, icon: APP_ICON },
+      onFinish: callbacks.onFinish,
+      onCancel: callbacks.onCancel,
+    };
+
+    await openContractCall(txOptions);
+  }, [userSession, getNetwork]);
+
+  /**
    * Initiates a contract call transaction to cast a vote.
    * Requires the user to be signed in.
    * @param {number} electionId - The ID of the election to vote in.
@@ -263,12 +585,24 @@ export const useVotingContract = () => {
 
   // Return the set of functions for interacting with the contract
   return {
+    // Read-only functions
     getElectionCount,
     getElectionDetails,
     getElectionResults,
+    getWeightedElectionResults,
     hasVoted,
+    isAllowlisted,
+    hasCommitted,
+    hasRevealed,
+
+    // Public functions (transactions)
     createElection,
+    createEnhancedElection,
     castVote,
+    addToAllowlist,
+    addMultipleToAllowlist,
+    commitVote,
+    revealVote,
   };
 };
 
