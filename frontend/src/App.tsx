@@ -8,20 +8,44 @@ import NotFoundPage from './pages/NotFoundPage';
 
 const App: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
-      <main className="flex-grow container mx-auto p-4 md:p-6 lg:p-8">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/create" element={<CreateElectionPage />} />
-          <Route path="/election/:electionId" element={<ElectionDetailsPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+      <main className="flex-grow">
+        <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-7xl">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/create" element={<CreateElectionPage />} />
+            <Route path="/election/:electionId" element={<ElectionDetailsPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </div>
       </main>
-      {/* Optional Footer can be added here */}
-      {/* <footer className="bg-gray-200 p-4 text-center text-sm text-gray-600">
-        Decentralized Voting Platform &copy; 2025
-      </footer> */}
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white py-6 mt-auto">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row justify-between items-center">
+            <div className="text-center sm:text-left mb-2 sm:mb-0">
+              <p className="text-sm text-gray-300">
+                Decentralized Voting Platform &copy; 2025
+              </p>
+            </div>
+            <div className="flex space-x-4 text-sm">
+              <a 
+                href="#" 
+                className="text-gray-300 hover:text-white transition duration-300"
+              >
+                Privacy Policy
+              </a>
+              <a 
+                href="#" 
+                className="text-gray-300 hover:text-white transition duration-300"
+              >
+                Terms of Service
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

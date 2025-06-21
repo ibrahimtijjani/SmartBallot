@@ -128,11 +128,23 @@ const CreateElectionPage: React.FC = () => {
       setIsLoading(false);
     }
   };
-
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Create New Election</h1>
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">        <div className="mb-4">
+    <div className="max-w-4xl mx-auto">
+      <div className="text-center mb-8">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+          Create New Election
+        </h1>
+        <p className="text-gray-600 text-sm sm:text-base">
+          Set up a new decentralized voting election on the blockchain
+        </p>
+      </div>
+      
+      <form 
+        onSubmit={handleSubmit} 
+        className="bg-white rounded-lg shadow-lg overflow-hidden"
+      >
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+        <div className="mb-4">
           <label htmlFor="question" className="block text-gray-700 font-semibold mb-2">Election Question</label>
           <input
             type="text"
@@ -193,7 +205,7 @@ const CreateElectionPage: React.FC = () => {
               + Add Option
             </button>
           )}
-        </div>        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        </div>        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6">
           <div>
             <label htmlFor="startBlockOffset" className="block text-gray-700 font-semibold mb-2">Start Delay (Blocks)</label>
             <input
@@ -234,19 +246,74 @@ const CreateElectionPage: React.FC = () => {
             )}
             <p className="text-xs text-gray-500 mt-1">How many blocks the election will remain open.</p>
           </div>
+        </div>        {(error || successTxId) && (
+          <div className="space-y-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">Error</h3>
+                    <div className="mt-2 text-sm text-red-700">
+                      <p>{error}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {successTxId && (
+              <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-green-800">Success!</h3>
+                    <div className="mt-2 text-sm text-green-700">
+                      <p>Election created successfully!</p>
+                      <p className="font-mono text-xs break-all mt-1">
+                        Transaction ID: {successTxId}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button
+            type="submit"
+            disabled={isLoading || !userData}
+            className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Creating Election...
+              </>
+            ) : (
+              'Create Election'
+            )}
+          </button>
+          {!userData && (
+            <p className="mt-2 sm:mt-0 sm:mr-3 text-red-500 text-sm">
+              Please connect your wallet to create an election.
+            </p>
+          )}
         </div>
-
-        {error && <p className="text-red-500 mb-4">Error: {error}</p>}
-        {successTxId && <p className="text-green-600 mb-4">Success! Transaction ID: {successTxId}</p>}
-
-        <button
-          type="submit"
-          disabled={isLoading || !userData}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'Creating Election...' : 'Create Election'}
-        </button>
-        {!userData && <p className="text-red-500 text-sm mt-2">Please connect your wallet to create an election.</p>}
+        </div>
       </form>
     </div>
   );
