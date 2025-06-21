@@ -265,3 +265,384 @@ Clarinet.test({
     },
 });
 
+// Enhanced functionality tests
+
+Clarinet.test({
+    name: "Ensure enhanced election creation works with token-gated voting",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+        const deployer = accounts.get("deployer")!;
+        const wallet1 = accounts.get("wallet_1")!;
+        const question = "Token-gated election?";
+        const options = ["Yes", "No"];
+        const startBlock = 10;
+        const endBlock = 110;
+        const tokenContract = deployer.address; // Using deployer as mock token contract
+        const minTokenBalance = 100;
+
+        chain.mineEmptyBlock(5);
+
+        let block = chain.mineBlock([
+            Tx.contractCall(contract_name, "create-election-enhanced", [
+                types.utf8(question),
+                types.uint(startBlock),
+                types.uint(endBlock),
+                types.list(options.map(opt => types.utf8(opt))),
+                types.ascii("token-gated"),
+                types.some(types.principal(tokenContract)),
+                types.uint(minTokenBalance),
+                types.bool(false), // use-allowlist
+                types.none(), // commit-end-block
+                types.none()  // reveal-end-block
+            ], wallet1.address)
+        ]);
+
+        block.receipts[0].result.expectOk().expectUint(1);
+
+        // Verify election details
+        const electionDetails = getElection(chain, 1, deployer).result.expectSome().expectTuple();
+        assertEquals(electionDetails["voting-type"], types.ascii("token-gated"));
+        assertEquals(electionDetails["token-contract"], types.some(types.principal(tokenContract)));
+        assertEquals(electionDetails["min-token-balance"], types.uint(minTokenBalance));
+        assertEquals(electionDetails["use-allowlist"], types.bool(false));
+    },
+});
+
+Clarinet.test({
+    name: "Ensure allowlist functionality works correctly",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+        const deployer = accounts.get("deployer")!;
+        const wallet1 = accounts.get("wallet_1")!;
+        const wallet2 = accounts.get("wallet_2")!;
+        const startBlock = 20;
+        const endBlock = 120;
+
+        // Create allowlist election
+        chain.mineBlock([
+            Tx.contractCall(contract_name, "create-election-enhanced", [
+                types.utf8("Allowlist election?"),
+                types.uint(startBlock),
+                types.uint(endBlock),
+                types.list([types.utf8("Option A"), types.utf8("Option B")]),
+                types.ascii("standard"),
+                types.none(), // token-contract
+                types.uint(0), // min-token-balance
+                types.bool(true), // use-allowlist
+                types.none(), // commit-end-block
+                types.none()  // reveal-end-block
+            ], wallet1.address)
+        ]);
+
+        // Add wallet2 to allowlist
+        let block = chain.mineBlock([
+            Tx.contractCall(contract_name, "add-to-allowlist", [
+                types.uint(1),
+                types.principal(wallet2.address)
+            ], wallet1.address)
+        ]);
+        block.receipts[0].result.expectOk().expectBool(true);
+
+        // Check if wallet2 is allowlisted
+        const isAllowlisted = chain.callReadOnlyFn(contract_name, "is-allowlisted", [
+            types.uint(1),
+            types.principal(wallet2.address)
+        ], deployer.address);
+        isAllowlisted.result.expectBool(true);
+
+        // Remove wallet2 from allowlist
+        block = chain.mineBlock([
+            Tx.contractCall(contract_name, "remove-from-allowlist", [
+                types.uint(1),
+                types.principal(wallet2.address)
+            ], wallet1.address)
+        ]);
+        block.receipts[0].result.expectOk().expectBool(true);
+
+        // Check if wallet2 is no longer allowlisted
+        const isStillAllowlisted = chain.callReadOnlyFn(contract_name, "is-allowlisted", [
+            types.uint(1),
+            types.principal(wallet2.address)
+        ], deployer.address);
+        isStillAllowlisted.result.expectBool(false);
+    },
+});
+
+Clarinet.test({
+    name: "Ensure commit-reveal voting works correctly",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+        const deployer = accounts.get("deployer")!;
+        const wallet1 = accounts.get("wallet_1")!;
+        const wallet2 = accounts.get("wallet_2")!;
+        const startBlock = 10;
+        const commitEndBlock = 50;
+        const revealEndBlock = 90;
+        const endBlock = 100;
+
+        // Create commit-reveal election
+        chain.mineBlock([
+            Tx.contractCall(contract_name, "create-election-enhanced", [
+                types.utf8("Commit-reveal election?"),
+                types.uint(startBlock),
+                types.uint(endBlock),
+                types.list([types.utf8("Option A"), types.utf8("Option B")]),
+                types.ascii("commit-reveal"),
+                types.none(), // token-contract
+                types.uint(0), // min-token-balance
+                types.bool(false), // use-allowlist
+                types.some(types.uint(commitEndBlock)), // commit-end-block
+                types.some(types.uint(revealEndBlock))  // reveal-end-block
+            ], wallet1.address)
+        ]);
+
+        // Advance to commit phase
+        chain.mineEmptyBlockUntil(startBlock);
+
+        // Commit a vote (using a mock commitment hash)
+        const commitment = new Uint8Array(32).fill(1); // Mock commitment
+        let block = chain.mineBlock([
+            Tx.contractCall(contract_name, "commit-vote", [
+                types.uint(1),
+                types.buff(commitment)
+            ], wallet2.address)
+        ]);
+        block.receipts[0].result.expectOk().expectBool(true);
+
+        // Check if voter has committed
+        const hasCommitted = chain.callReadOnlyFn(contract_name, "has-committed", [
+            types.uint(1),
+            types.principal(wallet2.address)
+        ], deployer.address);
+        hasCommitted.result.expectBool(true);
+
+        // Try to commit again (should fail)
+        block = chain.mineBlock([
+            Tx.contractCall(contract_name, "commit-vote", [
+                types.uint(1),
+                types.buff(commitment)
+            ], wallet2.address)
+        ]);
+        block.receipts[0].result.expectErr().expectUint(119); // ERR-ALREADY-COMMITTED
+    },
+});
+
+Clarinet.test({
+    name: "Ensure weighted voting calculates vote weights correctly",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+        const deployer = accounts.get("deployer")!;
+        const wallet1 = accounts.get("wallet_1")!;
+        const wallet2 = accounts.get("wallet_2")!;
+        const startBlock = 10;
+        const endBlock = 110;
+        const tokenContract = deployer.address; // Mock token contract
+
+        // Create weighted election
+        chain.mineBlock([
+            Tx.contractCall(contract_name, "create-election-enhanced", [
+                types.utf8("Weighted election?"),
+                types.uint(startBlock),
+                types.uint(endBlock),
+                types.list([types.utf8("Option A"), types.utf8("Option B")]),
+                types.ascii("weighted"),
+                types.some(types.principal(tokenContract)),
+                types.uint(1), // min-token-balance
+                types.bool(false), // use-allowlist
+                types.none(), // commit-end-block
+                types.none()  // reveal-end-block
+            ], wallet1.address)
+        ]);
+
+        // Advance to voting period
+        chain.mineEmptyBlockUntil(startBlock);
+
+        // Cast weighted vote
+        let block = chain.mineBlock([
+            Tx.contractCall(contract_name, "cast-vote", [
+                types.uint(1),
+                types.uint(0) // Vote for Option A
+            ], wallet2.address)
+        ]);
+        block.receipts[0].result.expectOk().expectBool(true);
+
+        // Check weighted results
+        const weightedResults = chain.callReadOnlyFn(contract_name, "get-weighted-election-results", [
+            types.uint(1)
+        ], deployer.address);
+        const results = weightedResults.result.expectOk().expectList();
+
+        // Since our mock token balance is 100, Option A should have 100 weighted votes
+        assertEquals(results[0], types.uint(100));
+        assertEquals(results[1], types.uint(0));
+    },
+});
+
+Clarinet.test({
+    name: "Ensure non-allowlisted voters cannot vote in allowlist elections",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+        const wallet1 = accounts.get("wallet_1")!;
+        const wallet2 = accounts.get("wallet_2")!;
+        const startBlock = 10;
+        const endBlock = 110;
+
+        // Create allowlist election without adding wallet2
+        chain.mineBlock([
+            Tx.contractCall(contract_name, "create-election-enhanced", [
+                types.utf8("Allowlist only election?"),
+                types.uint(startBlock),
+                types.uint(endBlock),
+                types.list([types.utf8("Option A"), types.utf8("Option B")]),
+                types.ascii("standard"),
+                types.none(), // token-contract
+                types.uint(0), // min-token-balance
+                types.bool(true), // use-allowlist
+                types.none(), // commit-end-block
+                types.none()  // reveal-end-block
+            ], wallet1.address)
+        ]);
+
+        // Advance to voting period
+        chain.mineEmptyBlockUntil(startBlock);
+
+        // Try to vote without being allowlisted
+        let block = chain.mineBlock([
+            Tx.contractCall(contract_name, "cast-vote", [
+                types.uint(1),
+                types.uint(0)
+            ], wallet2.address)
+        ]);
+        block.receipts[0].result.expectErr().expectUint(112); // ERR-NOT-ALLOWLISTED
+    },
+});
+
+Clarinet.test({
+    name: "Ensure only election creator can manage allowlist",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+        const wallet1 = accounts.get("wallet_1")!;
+        const wallet2 = accounts.get("wallet_2")!;
+        const startBlock = 20;
+        const endBlock = 120;
+
+        // Create allowlist election
+        chain.mineBlock([
+            Tx.contractCall(contract_name, "create-election-enhanced", [
+                types.utf8("Creator only allowlist?"),
+                types.uint(startBlock),
+                types.uint(endBlock),
+                types.list([types.utf8("Option A"), types.utf8("Option B")]),
+                types.ascii("standard"),
+                types.none(),
+                types.uint(0),
+                types.bool(true), // use-allowlist
+                types.none(),
+                types.none()
+            ], wallet1.address)
+        ]);
+
+        // Try to add to allowlist from non-creator account
+        let block = chain.mineBlock([
+            Tx.contractCall(contract_name, "add-to-allowlist", [
+                types.uint(1),
+                types.principal(wallet2.address)
+            ], wallet2.address) // wallet2 trying to modify allowlist
+        ]);
+        block.receipts[0].result.expectErr().expectUint(100); // ERR-NOT-AUTHORIZED
+    },
+});
+
+Clarinet.test({
+    name: "Ensure commit-reveal timing is enforced",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+        const wallet1 = accounts.get("wallet_1")!;
+        const wallet2 = accounts.get("wallet_2")!;
+        const startBlock = 10;
+        const commitEndBlock = 50;
+        const revealEndBlock = 90;
+        const endBlock = 100;
+
+        // Create commit-reveal election
+        chain.mineBlock([
+            Tx.contractCall(contract_name, "create-election-enhanced", [
+                types.utf8("Timing test election?"),
+                types.uint(startBlock),
+                types.uint(endBlock),
+                types.list([types.utf8("Option A"), types.utf8("Option B")]),
+                types.ascii("commit-reveal"),
+                types.none(),
+                types.uint(0),
+                types.bool(false),
+                types.some(types.uint(commitEndBlock)),
+                types.some(types.uint(revealEndBlock))
+            ], wallet1.address)
+        ]);
+
+        // Try to commit before start block
+        let block = chain.mineBlock([
+            Tx.contractCall(contract_name, "commit-vote", [
+                types.uint(1),
+                types.buff(new Uint8Array(32).fill(1))
+            ], wallet2.address)
+        ]);
+        block.receipts[0].result.expectErr().expectUint(103); // ERR-ELECTION-NOT-STARTED
+
+        // Advance past commit phase
+        chain.mineEmptyBlockUntil(commitEndBlock + 1);
+
+        // Try to commit after commit phase ended
+        block = chain.mineBlock([
+            Tx.contractCall(contract_name, "commit-vote", [
+                types.uint(1),
+                types.buff(new Uint8Array(32).fill(1))
+            ], wallet2.address)
+        ]);
+        block.receipts[0].result.expectErr().expectUint(114); // ERR-COMMIT-PHASE-ENDED
+    },
+});
+
+Clarinet.test({
+    name: "Ensure bulk allowlist operations work correctly",
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+        const deployer = accounts.get("deployer")!;
+        const wallet1 = accounts.get("wallet_1")!;
+        const wallet2 = accounts.get("wallet_2")!;
+        const startBlock = 20;
+        const endBlock = 120;
+
+        // Create allowlist election
+        chain.mineBlock([
+            Tx.contractCall(contract_name, "create-election-enhanced", [
+                types.utf8("Bulk allowlist test?"),
+                types.uint(startBlock),
+                types.uint(endBlock),
+                types.list([types.utf8("Option A"), types.utf8("Option B")]),
+                types.ascii("standard"),
+                types.none(),
+                types.uint(0),
+                types.bool(true), // use-allowlist
+                types.none(),
+                types.none()
+            ], wallet1.address)
+        ]);
+
+        // Add multiple voters to allowlist
+        const voters = [wallet2.address, deployer.address];
+        let block = chain.mineBlock([
+            Tx.contractCall(contract_name, "add-multiple-to-allowlist", [
+                types.uint(1),
+                types.list(voters.map(addr => types.principal(addr)))
+            ], wallet1.address)
+        ]);
+        block.receipts[0].result.expectOk().expectBool(true);
+
+        // Verify both voters are allowlisted
+        const isWallet2Allowlisted = chain.callReadOnlyFn(contract_name, "is-allowlisted", [
+            types.uint(1),
+            types.principal(wallet2.address)
+        ], deployer.address);
+        isWallet2Allowlisted.result.expectBool(true);
+
+        const isDeployerAllowlisted = chain.callReadOnlyFn(contract_name, "is-allowlisted", [
+            types.uint(1),
+            types.principal(deployer.address)
+        ], deployer.address);
+        isDeployerAllowlisted.result.expectBool(true);
+    },
+});
+
