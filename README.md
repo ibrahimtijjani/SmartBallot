@@ -1,22 +1,35 @@
-# Decentralized Voting Platform (Stacks)
+# Enhanced Decentralized Voting Platform (Stacks)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) <!-- Placeholder License Badge -->
 
-A secure and transparent voting platform built on the Stacks blockchain, featuring Clarity smart contracts for backend logic and a React frontend for user interaction.
+A secure and transparent voting platform built on the Stacks blockchain, featuring enhanced Clarity smart contracts with advanced voting mechanisms and a React frontend for user interaction.
 
 ## Project Overview
 
-This platform enables organizations, communities, or groups to create, manage, and participate in voting events (elections, polls) where results are recorded immutably on the Stacks blockchain. It aims to provide enhanced security, transparency, and verifiability compared to traditional voting systems.
+This platform enables organizations, communities, or groups to create, manage, and participate in sophisticated voting events (elections, polls) where results are recorded immutably on the Stacks blockchain. It provides enhanced security, transparency, and verifiability with support for multiple voting types including token-gated, weighted, and privacy-preserving commit-reveal voting.
 
 For a more detailed overview, see [project_overview.md](./project_overview.md).
 
-## Features
+## Enhanced Features
 
+### Core Features
 *   **Decentralized:** Core logic resides in Stacks smart contracts.
 *   **Secure:** Leverages Clarity language features and blockchain immutability.
-*   **Transparent:** Election details and vote counts (potentially anonymized results) are publicly verifiable on-chain.
+*   **Transparent:** Election details and vote counts are publicly verifiable on-chain.
 *   **User-Friendly:** Web interface for wallet connection, election creation, viewing, and voting.
 *   **Wallet Integration:** Uses `@stacks/connect` for seamless interaction with Stacks wallets (Hiro, Xverse, etc.).
+
+### Advanced Voting Types
+*   **Standard Voting:** Traditional one-person-one-vote elections
+*   **Token-Gated Voting:** Restrict voting rights to holders of specific tokens
+*   **Weighted Voting:** Vote weight based on token holdings for proportional representation
+*   **Commit-Reveal Voting:** Two-phase voting for enhanced privacy and preventing vote manipulation
+
+### Enhanced Security & Governance
+*   **Allowlist Management:** Election creators can specify eligible voters
+*   **Comprehensive Event Emission:** Full audit trail for off-chain indexing
+*   **Formal Verification:** Property-based testing ensures contract correctness
+*   **Gas Optimization:** Efficient batch operations and optimized vote counting
 
 ## Technical Stack
 
@@ -75,11 +88,43 @@ Detailed step-by-step instructions for cloning, installing dependencies, setting
 
 ## Usage
 
+### Basic Usage
 1.  **Connect Wallet:** Open the frontend application in your browser (usually `http://localhost:5173` after `npm run dev`) and connect your Stacks wallet.
 2.  **Create Election:** Navigate to the "Create Election" page, fill in the details (question, options, start/end blocks), and submit the transaction via your wallet.
 3.  **View Elections:** The homepage will list available elections (implementation pending).
 4.  **Vote:** Navigate to an active election's details page, select an option, and submit the vote transaction via your wallet.
 5.  **View Results:** Election results will be displayed on the details page, typically after the election has ended.
+
+### Enhanced Voting Types
+
+#### Standard Voting
+Traditional one-person-one-vote elections where each participant gets equal voting power.
+
+#### Token-Gated Voting
+Restrict voting rights to holders of specific tokens:
+- Set minimum token balance requirements
+- Only token holders can participate
+- Useful for DAO governance and token-holder decisions
+
+#### Weighted Voting
+Vote weight is proportional to token holdings:
+- Larger token holders have more voting power
+- Maintains proportional representation
+- Ideal for stake-based governance systems
+
+#### Commit-Reveal Voting
+Two-phase voting for enhanced privacy:
+1. **Commit Phase:** Voters submit encrypted vote commitments
+2. **Reveal Phase:** Voters reveal their actual votes with proof
+- Prevents vote manipulation and strategic voting
+- Ensures vote privacy until reveal phase
+
+### Allowlist Management
+Election creators can manage voter eligibility:
+- Add individual voters to allowlist
+- Bulk add multiple voters
+- Remove voters from allowlist
+- Combine with token-gating for hybrid eligibility
 
 ## Contributing
 
@@ -102,11 +147,16 @@ See the [Extra Section](#9-extra) in the original request or potential future ro
 
 ## Testing
 
-This project includes tests for both the smart contract and the frontend application.
+This project includes comprehensive tests for both the smart contract and the frontend application, with formal verification and gas optimization testing.
 
 ### Smart Contract Tests (Clarinet)
 
 The Clarity smart contract tests are located in the `contracts/tests/` directory and use the Clarinet testing framework.
+
+**Test Suites:**
+- `voting_test.ts` - Core functionality and enhanced features testing
+- `voting_formal_verification_test.ts` - Property-based and formal verification tests
+- `voting_gas_optimization_test.ts` - Performance and gas efficiency tests
 
 **To run the contract tests:**
 
@@ -120,6 +170,16 @@ The Clarity smart contract tests are located in the `contracts/tests/` directory
     ```
 
 This command will execute all test files (`*_test.ts`) within the `contracts/tests/` directory against a simulated Clarinet development environment.
+
+**Test Coverage:**
+- ✅ Standard voting functionality
+- ✅ Token-gated and weighted voting
+- ✅ Commit-reveal voting workflow
+- ✅ Allowlist management
+- ✅ Error handling and edge cases
+- ✅ Property-based verification (monotonic counters, vote consistency)
+- ✅ Gas optimization and batch operations
+- ✅ Timing constraint enforcement
 
 ### Frontend Tests (Jest + React Testing Library)
 
