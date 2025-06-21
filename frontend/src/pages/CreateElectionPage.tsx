@@ -129,43 +129,41 @@ const CreateElectionPage: React.FC = () => {
     }
   };
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-8">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+    <div className="max-w-4xl mx-auto">      <div className="text-center mb-8">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-2">
           Create New Election
         </h1>
-        <p className="text-gray-600 text-sm sm:text-base">
+        <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">
           Set up a new decentralized voting election on the blockchain
         </p>
       </div>
       
       <form 
         onSubmit={handleSubmit} 
-        className="bg-white rounded-lg shadow-lg overflow-hidden"
+        className="bg-white dark:bg-dark-800 rounded-lg shadow-lg overflow-hidden border dark:border-dark-700"
       >
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-        <div className="mb-4">
-          <label htmlFor="question" className="block text-gray-700 font-semibold mb-2">Election Question</label>
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6">        <div className="mb-4">
+          <label htmlFor="question" className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">Election Question</label>
           <input
             type="text"
             id="question"
             value={question}
             onChange={(e) => handleQuestionChange(e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors ${
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors bg-white dark:bg-dark-700 text-gray-900 dark:text-white ${
               errors.question 
-                ? 'border-red-500 focus:ring-red-500' 
-                : 'border-gray-300 focus:ring-blue-500'
+                ? 'border-red-500 focus:ring-red-500 dark:border-red-400 dark:focus:ring-red-400' 
+                : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500 dark:focus:ring-blue-400'
             }`}
             maxLength={256}
             required
           />
           {errors.question && (
-            <p className="text-red-500 text-sm mt-1">{errors.question}</p>
+            <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.question}</p>
           )}
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {question.length}/256 characters
           </p>
-        </div>        <div className="mb-4">
+        </div><div className="mb-4">
           <label className="block text-gray-700 font-semibold mb-2">Voting Options</label>
           {options.map((option, index) => (
             <div key={index} className="flex items-center mb-2">

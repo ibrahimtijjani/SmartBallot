@@ -8,7 +8,7 @@ import NotFoundPage from './pages/NotFoundPage';
 
 const App: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-dark-900 transition-colors duration-300">
       <Navbar />
       <main className="flex-grow">
         <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-7xl">
@@ -21,24 +21,24 @@ const App: React.FC = () => {
         </div>
       </main>
       {/* Footer */}
-      <footer className="bg-gray-800 text-white py-6 mt-auto">
+      <footer className="bg-gray-800 dark:bg-dark-800 text-white py-6 mt-auto">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-center">
             <div className="text-center sm:text-left mb-2 sm:mb-0">
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-gray-300 dark:text-gray-400">
                 Decentralized Voting Platform &copy; 2025
               </p>
             </div>
             <div className="flex space-x-4 text-sm">
               <a 
                 href="#" 
-                className="text-gray-300 hover:text-white transition duration-300"
+                className="text-gray-300 dark:text-gray-400 hover:text-white transition duration-300"
               >
                 Privacy Policy
               </a>
               <a 
                 href="#" 
-                className="text-gray-300 hover:text-white transition duration-300"
+                className="text-gray-300 dark:text-gray-400 hover:text-white transition duration-300"
               >
                 Terms of Service
               </a>
