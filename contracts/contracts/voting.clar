@@ -606,6 +606,118 @@
     ))))))))))
 )
 
+;; --- Analytics and Batch Operations ---
+
+;; Retrieves comprehensive analytics for a specific election.
+;; @param election-id: The ID of the election.
+;; @returns (ok tuple) with analytics data, or an error code.
+(define-read-only (get-election-analytics (election-id uint))
+    (match (map-get? elections election-id)
+        election-data
+        (let (
+            (options (get options election-data))
+            (voting-type (get voting-type election-data))
+            (current-block block-height)
+            (is-active (and (>= current-block (get start-block election-data))
+                           (< current-block (get end-block election-data))))
+            (is-ended (>= current-block (get end-block election-data)))
+        )
+            (ok {
+                election: election-data,
+                vote-counts: (map (lambda (index) (get-vote-count election-id index)) (list-indices options)),
+                weighted-counts: (if (is-eq voting-type "weighted")
+                    (map (lambda (index) (get-weighted-vote-count election-id index)) (list-indices options))
+                    (list)
+                ),
+                is-active: is-active,
+                is-ended: is-ended,
+                blocks-remaining: (if is-active (- (get end-block election-data) current-block) u0),
+                participation-rate: (if (> (get total-votes election-data) u0)
+                    (* (/ (get total-votes election-data) u100) u100) ;; Simple percentage calculation
+                    u0
+                )
+            })
+        )
+        (err ERR-ELECTION-NOT-FOUND)
+    )
+)
+
+;; Retrieves platform-wide statistics.
+;; @returns (ok tuple) with platform statistics.
+(define-read-only (get-platform-stats)
+    (let (
+        (total-elections (var-get election-id-counter))
+        (current-block block-height)
+    )
+        (ok {
+            total-elections: total-elections,
+            current-block: current-block,
+            active-elections: (get-active-elections-count),
+            total-votes-cast: (get-total-platform-votes)
+        })
+    )
+)
+
+;; Counts the number of currently active elections.
+;; @returns uint: Number of active elections.
+(define-read-only (get-active-elections-count)
+    (fold count-active-elections (list-range u1 (var-get election-id-counter)) u0)
+)
+
+;; Gets the total number of votes cast across all elections.
+;; @returns uint: Total votes cast on the platform.
+(define-read-only (get-total-platform-votes)
+    (fold sum-election-votes (list-range u1 (var-get election-id-counter)) u0)
+)
+
+;; Retrieves multiple elections efficiently in a single call.
+;; @param election-ids: List of election IDs to retrieve.
+;; @returns (ok (list (optional election-data))) List of election data or none for each ID.
+(define-read-only (get-elections-batch (election-ids (list 50 uint)))
+    (ok (map get-election-details election-ids))
+)
+
+;; Helper function to count active elections (used with fold).
+;; @param election-id: The election ID to check.
+;; @param accumulator: The current count of active elections.
+;; @returns uint: Updated count.
+(define-private (count-active-elections (election-id uint) (accumulator uint))
+    (match (map-get? elections election-id)
+        election-data
+        (let ((current-block block-height))
+            (if (and (>= current-block (get start-block election-data))
+                    (< current-block (get end-block election-data)))
+                (+ accumulator u1)
+                accumulator
+            )
+        )
+        accumulator
+    )
+)
+
+;; Helper function to sum votes across elections (used with fold).
+;; @param election-id: The election ID to check.
+;; @param accumulator: The current sum of votes.
+;; @returns uint: Updated sum.
+(define-private (sum-election-votes (election-id uint) (accumulator uint))
+    (match (map-get? elections election-id)
+        election-data
+        (+ accumulator (get total-votes election-data))
+        accumulator
+    )
+)
+
+;; Helper function to generate a range of numbers from start to end.
+;; @param start: Starting number.
+;; @param end: Ending number.
+;; @returns (list uint): List of numbers from start to end.
+(define-private (list-range (start uint) (end uint))
+    (if (> start end)
+        (list)
+        (cons start (list-range (+ start u1) end))
+    )
+)
+
 ;; Helper function to generate a list of indices [0, 1, ..., len-1] for a given list.
 ;; Used by `get-election-results` to iterate through options.
 ;; @param lst: The list for which to generate indices.
